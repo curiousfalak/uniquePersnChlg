@@ -17,14 +17,10 @@ for each of the three sample videos.
 
 ## Debug APK
 
-A working debug APK is included in this repository: **[`app-debug.apk`](./app-debug.apk)**
-*(update this path to wherever you place it — e.g. `release/app-debug.apk`, or link to the
-GitHub Release asset if you attached it there instead)*.
+A working debug APK is included in this repository: **[`app-debug.apk`](https://github.com/curiousfalak/uniquePersnChlg/releases/download/v1.0.0/app-debug.apk)**
 
-Install directly on a device with:
-```
-adb install app-debug.apk
-```
+
+
 
 ## How to run it
 
