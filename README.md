@@ -62,54 +62,35 @@ technical section for exact method).
 ### Architecture
 
 ```
-video (SAF Uri)
-  -> FrameExtractor        MediaMetadataRetriever, ~6 fps sampling
-  -> FaceDetectorWrapper   ML Kit, ACCURATE mode, full landmarks + classification
-  -> NMS de-dup            per-frame IoU suppression of duplicate ML Kit detections
-                           for the same physical face (VideoProcessor.suppressDuplicateDetections)
-  -> FaceEmbedder          TFLite MobileFaceNet, 192-d L2-normalized embeddings
-  -> Tracker               Stage A: per-frame IoU + embedding matching -> Tracklets
-                           (one Tracklet == one continuous "appearance")
-  -> quality gate          tracklets whose best frame scores < 0.30 are dropped
-  -> IdentityClusterer     Stage B: agglomerative clustering of tracklets -> Identities
-  -> representativeSample  tiered filter: isolated + eyes-open + uncropped, relaxing
-                           only when a strictly better tier has zero candidates
-  -> CollageComposer       Canvas-based grid render, neighbor-aware crop clamping
+video -> extract frames -> detect faces -> remove duplicate detections
+       -> get face embeddings -> track faces across nearby frames (= appearances)
+       -> drop low-quality appearances -> cluster appearances into people
+       -> pick best photo per person -> render collage
 ```
 
-Package layout: `pipeline/` (stages above), `data/` (`FaceSample`, `Tracklet`, `Identity`),
-`ui/` (Compose screens), `viewmodel/` (bridges pipeline to UI via `StateFlow`).
+Code layout: `pipeline/` (steps above), `data/` (`FaceSample`, `Tracklet`, `Identity`),
+`ui/` (screens), `viewmodel/` (connects pipeline to UI).
 
-Tracking and clustering are separate stages: tracking only compares *consecutive* frames (cheap,
-local, rarely confuses two people since the face barely moves frame-to-frame). Clustering then
-compares tracklets globally across the whole video, which is where long-range identity matching
-happens. Appearance-count correctness (tracklet start/end) stays independent of clustering
-accuracy this way.
+Tracking and clustering are kept separate: tracking only compares nearby frames (cheap, reliable
+short-range matching), clustering compares across the whole video (where "is this the same
+person as earlier" gets decided). This keeps appearance counting accurate even if long-range
+matching isn't perfect.
 
-`VideoProcessor.process()` runs under `Dispatchers.Default` inside `viewModelScope.launch`;
-progress publishes via `StateFlow<ProcessingState>`, collected in Compose with
-`collectAsState()`. No bitmap decoding, ML Kit inference, or TFLite inference touches the main
-thread.
+Runs on a background thread (`Dispatchers.Default`), reports progress to the UI via
+`StateFlow`. Nothing touches the main thread.
 
-### Clustering algorithm — three versions
+### Clustering algorithm
 
-**v1 — centroid averaging.** Average all of a tracklet's frame embeddings into one vector,
-compare vectors. Failed on head-pose variance: averaging a mostly-frontal appearance with a
-mostly-turned appearance of the same person dilutes strong frontal-to-frontal matches. Confirmed
-on test footage — same person split into two identities.
+Compares appearances by their individual best frames, not one averaged vector per appearance
+(averaging washes out strong matches when the same person is captured at different angles).
 
-**v2 — top-2-of-best-frames.** Compare each tracklet's top-6 frames directly (no blending), score
-a pair by the average of its top-2 highest cross-frame similarities. Fixed the pose problem, but
-chains in agglomerative clustering: a merged cluster has more frames, more chances for 2
-coincidentally-high similarities against an unrelated cluster, cascading until everyone collapses
-into one identity. Confirmed on test footage.
+For each pair of appearances: take each one's top-6 highest-quality frames, compare every frame
+from one side against every frame from the other, and score the pair by the **average of all
+those comparisons**. Two appearances merge if that average is above the threshold.
 
-**v3 — full average-linkage over frame pairs (current).** Compares individual frames directly,
-scores a pair by the mean of every cross-frame similarity in the top-6×top-6 grid, not just the
-top 2. Resists chaining since the whole comparison set must agree on average. Threshold 0.45
-chosen by simulating clustering results against logged similarity data across a range of
-threshold values (0.30–0.60) and picking the value that avoided wrong merges.
-`VideoProcessor.logPairwiseSimilarities()` logs this exact score per tracklet pair on every run.
+Threshold: **0.45**, chosen by testing against logged similarity scores across sample videos and
+picking the value that avoided incorrect merges. `VideoProcessor.logPairwiseSimilarities()` logs
+this exact score per appearance pair on every run.
 
 ### Known clustering limitation, with evidence
 
