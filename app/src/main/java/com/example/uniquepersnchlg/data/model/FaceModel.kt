@@ -1,4 +1,4 @@
-package com.example.uniquepersnchlg.data.model
+package com.example.uniquepersnchlg.data
 
 import android.graphics.Bitmap
 import android.graphics.RectF
@@ -18,7 +18,14 @@ data class FaceSample(
     val sharpness: Float,            // Laplacian-variance based, normalized-ish
     val touchesEdge: Boolean,
     val frameWidth: Int,
-    val frameHeight: Int
+    val frameHeight: Int,
+    // Distance in px from this face's box center to the nearest OTHER detected face's box
+    // center in the same frame. Null if this was the only face detected in that frame.
+    // Used to (a) penalize crowded frames when picking a representative shot, since a
+    // generous collage crop around a face that's close to another person will bleed into
+    // their face, and (b) as a secondary signal that a "full face visible" shot is more
+    // likely (crowded/overlapping frames are more likely to have partial occlusion).
+    val nearestNeighborDistancePx: Float? = null
 ) {
 
     fun qualityScore(): Float {
@@ -37,6 +44,21 @@ data class FaceSample(
                 0.15f * sizeScore
 
         if (touchesEdge) score *= 0.5f
+
+        // Penalize frames where another face sits close enough that a generous collage crop
+        // around this box would likely bleed into them. "Close" is relative to this face's
+        // own box size, since box size scales with distance-to-camera.
+        val faceSize = kotlin.math.max(boundingBox.width(), boundingBox.height())
+        val neighborDist = nearestNeighborDistancePx
+        if (neighborDist != null && faceSize > 0f) {
+            val ratio = neighborDist / faceSize
+            if (ratio < 3.0f) {
+                // Smoothly scale the penalty: right at the crop-bleed boundary (~ratio 1.5)
+                // it's severe; by ratio 3 (plenty of clearance) it's negligible.
+                val crowding = (1f - (ratio / 3.0f)).coerceIn(0f, 1f)
+                score *= (1f - 0.6f * crowding)
+            }
+        }
         return score
     }
 }
@@ -49,7 +71,7 @@ data class Tracklet(
     val startMs: Long get() = samples.first().timestampMs
     val endMs: Long get() = samples.last().timestampMs
 
-
+    /** Mean of the L2-normalized embeddings of the best-quality samples, re-normalized. */
     fun centroidEmbedding(topK: Int = 5): FloatArray {
         val best = samples.sortedByDescending { it.qualityScore() }.take(topK)
         val dim = best.first().embedding.size
@@ -65,9 +87,7 @@ data class Tracklet(
     fun bestSample(): FaceSample = samples.maxByOrNull { it.qualityScore() }!!
 }
 
-/**
- * One clustered identity within a single video: the unit the UI shows as "Person N".
- */
+
 data class Identity(
     val id: Int,
     val tracklets: MutableList<Tracklet> = mutableListOf()
@@ -92,13 +112,12 @@ data class Identity(
     }
 }
 
-/** Final per-video result handed to the UI. */
+
 data class VideoResult(
     val videoUri: String,
     val identities: List<Identity>,
     val collageBitmap: Bitmap
 )
-
 
 sealed class ProcessingState {
     data object Idle : ProcessingState()
