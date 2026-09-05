@@ -1,18 +1,17 @@
 package com.example.uniquepersnchlg
 
-
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import com.example.uniquepersnchlg.ui.screens.AppNavHost
 
 
+import com.example.uniquepersnchlg.ui.theme.FaceCollageTheme
 import com.example.uniquepersnchlg.viewmodel.MainViewModel
 
 class MainActivity : ComponentActivity() {
@@ -23,15 +22,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             FaceCollageTheme {
-                Surface(modifier = Modifier) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(androidx.compose.material3.MaterialTheme.colorScheme.background)
+                ) {
                     AppNavHost(viewModel = viewModel)
                 }
             }
         }
     }
-}
-
-@Composable
-fun FaceCollageTheme(content: @Composable () -> Unit) {
-    MaterialTheme(content = content)
 }

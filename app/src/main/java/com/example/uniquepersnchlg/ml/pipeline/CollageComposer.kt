@@ -4,7 +4,6 @@ import android.graphics.*
 import com.example.uniquepersnchlg.data.Identity
 import com.example.uniquepersnchlg.util.BitmapUtils
 import kotlin.math.ceil
-import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
@@ -29,11 +28,11 @@ class CollageComposer {
         val bmp = Bitmap.createBitmap(CANVAS_W, CANVAS_H, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
 
-        // Background: soft vertical gradient.
+        // Background: hot-pink brand gradient, dark plum at top fading to hot pink.
         val bgPaint = Paint().apply {
             shader = LinearGradient(
                 0f, 0f, 0f, CANVAS_H.toFloat(),
-                intArrayOf(Color.parseColor("#2b1055"), Color.parseColor("#7597de")),
+                intArrayOf(Color.parseColor("#3D0F26"), Color.parseColor("#FF3D7A")),
                 null, Shader.TileMode.CLAMP
             )
         }
@@ -42,12 +41,12 @@ class CollageComposer {
         // Header
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.WHITE
-            textSize = 56f
+            textSize = 58f
             typeface = Typeface.create(Typeface.DEFAULT_BOLD, Typeface.BOLD)
             textAlign = Paint.Align.LEFT
         }
         val subtitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.parseColor("#E0E0E0")
+            color = Color.parseColor("#FFD1E1")
             textSize = 32f
             textAlign = Paint.Align.LEFT
         }
@@ -106,7 +105,7 @@ class CollageComposer {
         // neighbor is present. Full-frame fallback is reserved for solo frames where the crop
         // came out small for an unrelated reason (e.g. face right at the image edge).
         if (shot.nearestNeighborDistancePx == null) {
-            val minAcceptableDim = max(shot.boundingBox.width(), shot.boundingBox.height()) * 1.05f
+            val minAcceptableDim = kotlin.math.max(shot.boundingBox.width(), shot.boundingBox.height()) * 1.05f
             if (portrait.width < minAcceptableDim || portrait.height < minAcceptableDim) {
                 portrait = shot.frameBitmap
             }
