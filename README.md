@@ -1,4 +1,4 @@
-# FaceCollage
+# Video-based unique-person collage
 
 An Android app. Give it a video, and it:
 1. Finds every face in the video
