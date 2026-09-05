@@ -6,9 +6,10 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.uniquepersnchlg.data.ProcessingState
+import com.example.uniquepersnchlg.pipeline.VideoProcessor
 
-import com.example.facecollage.pipeline.VideoProcessor
-import com.example.uniquepersnchlg.data.model.ProcessingState
+
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 

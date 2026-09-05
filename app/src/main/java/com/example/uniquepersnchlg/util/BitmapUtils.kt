@@ -1,4 +1,4 @@
-package com.example.facecollage.util
+package com.example.uniquepersnchlg.util
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -13,10 +13,34 @@ object BitmapUtils {
     /**
      * Crops [box] out of [src] with a generous margin (default 60% padding each side) so the
      * result is a usable portrait crop rather than a tight, low-res face box. Clamped to bounds.
+     *
+     * @param neighborDistancePx if another face was detected in the same frame, its distance
+     *   (box-center to box-center) in pixels. When provided, the horizontal margin is clamped
+     *   so the crop can never reach past roughly the midpoint to that neighbor - otherwise a
+     *   generous crop around one person's face bleeds into an adjacent person's face when two
+     *   people share the frame, producing a tile that looks like two faces spliced together.
      */
-    fun cropWithMargin(src: Bitmap, box: RectF, marginFraction: Float = 0.6f): Bitmap {
-        val marginX = box.width() * marginFraction
+    fun cropWithMargin(
+        src: Bitmap,
+        box: RectF,
+        marginFraction: Float = 0.6f,
+        neighborDistancePx: Float? = null
+    ): Bitmap {
+        var marginX = box.width() * marginFraction
         val marginY = box.height() * marginFraction
+        if (neighborDistancePx != null) {
+            // Leave a small buffer short of the true midpoint so we don't clip right up to
+            // the neighbor's face edge either. IMPORTANT: no minimum floor here - an earlier
+            // version floored this at 0.15x box width "just in case", but that floor ignored
+            // how close the neighbor actually was. For any neighbor closer than ~1.3x the box
+            // width (a completely normal distance for two people framed together, e.g. an
+            // interview two-shot), that floor mathematically guaranteed the crop would cross
+            // the midpoint and bleed into the neighbor's face - exactly the bug it was meant to
+            // prevent. A tight-but-neighbor-safe crop is strictly better than a slightly more
+            // generous crop that includes a second person's face.
+            val safeHalfDistance = (neighborDistancePx / 2f) * 0.8f
+            marginX = min(marginX, max(0f, safeHalfDistance - box.width() / 2f))
+        }
         val left = max(0f, box.left - marginX)
         val top = max(0f, box.top - marginY * 1.3f) // a bit extra above for hair/forehead
         val right = min(src.width.toFloat(), box.right + marginX)

@@ -10,7 +10,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.example.facecollage.ui.AppNavHost
+import com.example.uniquepersnchlg.ui.screens.AppNavHost
+
 
 import com.example.uniquepersnchlg.viewmodel.MainViewModel
 

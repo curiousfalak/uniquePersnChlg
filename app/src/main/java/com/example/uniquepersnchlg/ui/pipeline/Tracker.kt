@@ -1,9 +1,10 @@
 package com.example.facecollage.pipeline
 
 import android.graphics.RectF
+import com.example.uniquepersnchlg.data.FaceSample
+import com.example.uniquepersnchlg.data.Tracklet
 
-import com.example.uniquepersnchlg.data.model.FaceSample
-import com.example.uniquepersnchlg.data.model.Tracklet
+
 import kotlin.collections.filter
 
 

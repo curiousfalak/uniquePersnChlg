@@ -2,6 +2,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Reading a user-picked video via SAF needs no storage permission on API 26+;
+         we use ACTION_OPEN_DOCUMENT / GetContent so no READ_EXTERNAL_STORAGE is required.
+         WRITE is only needed pre-API 29 for MediaStore inserts. -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- Android 11+ (API 30) package-visibility: without this, PackageManager may hide
+         image-sharing targets from Intent.createChooser() on some OEM skins/API levels. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:name=".UniquePersnchlg"
@@ -23,6 +39,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Needed for the Share button: turns the collage bitmap saved in app cache into a
+             content:// Uri other apps (Gmail, WhatsApp, etc.) can actually read. Without this
+             provider declared, cacheForSharing()'s FileProvider.getUriForFile() call throws,
+             and the Share button silently fails. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>

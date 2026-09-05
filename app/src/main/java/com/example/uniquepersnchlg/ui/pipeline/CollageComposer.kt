@@ -1,13 +1,20 @@
-package com.example.facecollage.pipeline
+package com.example.uniquepersnchlg.pipeline
 
 import android.graphics.*
-import com.example.facecollage.util.BitmapUtils
-import com.example.uniquepersnchlg.data.model.Identity
-
+import com.example.uniquepersnchlg.data.Identity
+import com.example.uniquepersnchlg.util.BitmapUtils
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
-
+/**
+ * Builds a presentable, shareable collage for one video: one tile per Identity, each showing
+ * its representative shot (a generously-cropped frame, never a tight face box), with a rounded
+ * card, subtle shadow, gradient caption bar, and a person label + appearance count.
+ *
+ * Layout: a near-square grid (like an Instagram Story photo-grid layout), with the highest
+ * quality face receiving the largest "hero" tile when there's an odd one out, purely for visual
+ * interest - grid math otherwise adapts cleanly to any person count from 1 to double digits.
+ */
 class CollageComposer {
 
     companion object {
@@ -80,7 +87,29 @@ class CollageComposer {
 
     private fun drawTile(canvas: Canvas, rect: RectF, identity: Identity, personNumber: Int) {
         val shot = identity.representativeSample()
-        val portrait = BitmapUtils.cropWithMargin(shot.frameBitmap, shot.boundingBox, marginFraction = 0.9f)
+        // Margin reduced from the old 0.9 (too generous - bled into a neighboring face when two
+        // people shared the frame) to 0.55, plus neighbor-aware clamping in cropWithMargin as a
+        // hard safeguard for any frame where people are unusually close together.
+        var portrait = BitmapUtils.cropWithMargin(
+            shot.frameBitmap, shot.boundingBox,
+            marginFraction = 0.55f,
+            neighborDistancePx = shot.nearestNeighborDistancePx
+        )
+        // Safety net for a genuinely degenerate crop (near-zero area) - but ONLY when there is
+        // NO neighbor nearby. If shot.nearestNeighborDistancePx is non-null, the neighbor-clamp
+        // above already deliberately shrank the crop to avoid bleeding into that other person -
+        // falling back to the FULL frame in that case would reintroduce exactly the person we
+        // just excluded, since the full frame IS the two-shot. So: accept whatever size the
+        // neighbor-clamped crop produced (mathematically guaranteed non-degenerate - see
+        // cropWithMargin's own floor) rather than ever falling back to the full frame when a
+        // neighbor is present. Full-frame fallback is reserved for solo frames where the crop
+        // came out small for an unrelated reason (e.g. face right at the image edge).
+        if (shot.nearestNeighborDistancePx == null) {
+            val minAcceptableDim = kotlin.math.max(shot.boundingBox.width(), shot.boundingBox.height()) * 1.05f
+            if (portrait.width < minAcceptableDim || portrait.height < minAcceptableDim) {
+                portrait = shot.frameBitmap
+            }
+        }
 
         // Clip to rounded rect
         canvas.save()

@@ -1,4 +1,4 @@
-package com.example.facecollage.ui
+package com.example.uniquepersnchlg.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -16,9 +16,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.facecollage.util.SaveShareUtils
+import com.example.uniquepersnchlg.data.VideoResult
 
-
-import com.example.uniquepersnchlg.data.model.VideoResult
 
 @Composable
 fun ResultScreen(result: VideoResult, onProcessAnother: () -> Unit) {
@@ -52,8 +51,16 @@ fun ResultScreen(result: VideoResult, onProcessAnother: () -> Unit) {
                 }) { Text("Save") }
 
                 OutlinedButton(onClick = {
-                    val uri = SaveShareUtils.cacheForSharing(context, result.collageBitmap, "facecollage_${System.currentTimeMillis()}")
-                    context.startActivity(SaveShareUtils.shareIntent(context, uri))
+                    try {
+                        val uri = SaveShareUtils.cacheForSharing(context, result.collageBitmap, "facecollage_${System.currentTimeMillis()}")
+                        context.startActivity(SaveShareUtils.shareIntent(context, uri))
+                    } catch (e: Exception) {
+                        // Most common cause: the FileProvider <provider> entry is missing from
+                        // AndroidManifest.xml (getUriForFile throws IllegalArgumentException),
+                        // or its authority doesn't match "${applicationId}.fileprovider".
+                        android.util.Log.e("ResultScreen", "Share failed", e)
+                        Toast.makeText(context, "Share failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
                 }) { Text("Share") }
             }
 

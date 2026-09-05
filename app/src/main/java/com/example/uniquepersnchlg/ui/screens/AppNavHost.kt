@@ -1,4 +1,4 @@
-package com.example.facecollage.ui
+package com.example.uniquepersnchlg.ui.screens
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -7,9 +7,11 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.uniquepersnchlg.data.model.ProcessingState
+import com.example.facecollage.ui.PickerScreen
+import com.example.facecollage.ui.ProcessingScreen
+import com.example.uniquepersnchlg.data.ProcessingState
+import com.example.uniquepersnchlg.ui.ResultScreen
 import com.example.uniquepersnchlg.viewmodel.MainViewModel
-
 
 private object Routes {
     const val PICKER = "picker"
