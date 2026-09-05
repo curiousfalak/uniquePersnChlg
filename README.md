@@ -8,7 +8,7 @@ An Android app. Give it a video, and it:
 
 Everything runs on-device — no internet, no server.
 
-![FaceCollage result screen](screenshots/collage-sample.png)
+![FaceCollage result screen](https://github.com/curiousfalak/uniquePersnChlg/blob/master/img_.jpeg?raw=true)
 
 ## Demo video
 
