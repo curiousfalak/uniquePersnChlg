@@ -109,7 +109,22 @@ class VideoProcessor(private val context: Context) {
                 }
 
                 _state.value = ProcessingState.Tracking
-                val tracklets = tracker.buildTracklets(samplesByFrame)
+                val rawTracklets = tracker.buildTracklets(samplesByFrame)
+
+                // Drop tracklets whose best frame never reaches a reasonable quality bar. The
+                // tracker's own per-frame gate (0.18) is deliberately lenient so it doesn't miss
+                // real but briefly-glimpsed appearances - but that means a tracklet can survive
+                // with EVERY frame barely scraping that bar, e.g. a spurious detection on
+                // background foliage or a face so oblique/blurry it was never really "clearly
+                // visible" per the assignment's own definition. Such a tracklet has no usable
+                // frame for its collage tile (producing a blank/background-only tile) and is a
+                // reasonable candidate to exclude at the appearance level, not just deprioritize
+                // at render time.
+                val tracklets = rawTracklets.filter { it.bestSample().qualityScore() >= 0.30f }
+                val droppedCount = rawTracklets.size - tracklets.size
+                if (droppedCount > 0) {
+                    android.util.Log.d("VideoProcessor", "Dropped $droppedCount low-quality tracklet(s) (no frame ever reached quality 0.30).")
+                }
 
                 if (tracklets.isEmpty()) {
                     _state.value = ProcessingState.Error("No clearly visible faces were found.")
