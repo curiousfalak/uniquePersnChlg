@@ -1,4 +1,4 @@
-# Video-based unique-person collage
+# FaceCollage
 
 An Android app. Give it a video, and it:
 1. Finds every face in the video
@@ -8,13 +8,32 @@ An Android app. Give it a video, and it:
 
 Everything runs on-device — no internet, no server.
 
+## Demo video
+
+**[Add your Google Drive link here]** — set sharing to "Anyone with the link can view."
+
+The recording shows processing progress, per-person appearance counts, and the finished collage
+for each of the three sample videos.
+
+## Debug APK
+
+A working debug APK is included in this repository: **[`app-debug.apk`](./app-debug.apk)**
+*(update this path to wherever you place it — e.g. `release/app-debug.apk`, or link to the
+GitHub Release asset if you attached it there instead)*.
+
+Install directly on a device with:
+```
+adb install app-debug.apk
+```
+
 ## How to run it
 
-1. Open in Android Studio, let it sync.
-2. Add `mobilefacenet.tflite` to `app/src/main/assets/` (not included in the repo — download
+1. Clone this repository.
+2. Open the project in Android Studio, let it sync.
+3. Add `mobilefacenet.tflite` to `app/src/main/assets/` (not included in the repo — download
    separately, see model section below).
-3. Confirm `minSdk = 26` in `app/build.gradle.kts`.
-4. Run the app, pick a video, watch the progress bar.
+4. Confirm `minSdk = 26` in `app/build.gradle.kts`.
+5. Run the app, pick a video, watch the progress bar.
 
 ## How it works
 
@@ -37,11 +56,22 @@ eyes open, smiling, alone in frame), then arranges everyone into a grid collage.
 embedding. Sourced from [MCarlomagno/FaceRecognitionAuth](https://github.com/MCarlomagno/FaceRecognitionAuth)
 (BSD-3-Clause).
 
+The face crop fed to the model is aligned using ML Kit's eye landmarks (rotated so the eyes are
+level) before resizing to 112×112, since the model was trained on aligned faces.
+
 ## Similarity threshold
 
 **0.45** — two appearances are grouped as the same person if their embeddings score above this;
-kept separate below it. Tuned by testing against sample videos at different cutoff values (see
-technical section for exact method).
+kept separate below it.
+
+How it's computed: for each pair of appearances, take each one's top-6 highest-quality frames,
+compare every frame from one side against every frame from the other, and average all of those
+comparisons. This holds up better than averaging each appearance down to one vector first, which
+breaks when the same person is captured at noticeably different head angles across appearances.
+
+0.45 was chosen by testing against the sample videos, logging the actual pairwise similarity
+score for every appearance pair, and picking the value that avoided incorrectly merging
+different people.
 
 ## Known limitations
 
@@ -85,8 +115,8 @@ Compares appearances by their individual best frames, not one averaged vector pe
 (averaging washes out strong matches when the same person is captured at different angles).
 
 For each pair of appearances: take each one's top-6 highest-quality frames, compare every frame
-from one side against every frame from the other, and score the pair by the **average of all
-those comparisons**. Two appearances merge if that average is above the threshold.
+from one side against every frame from the other, and score the pair by the average of all
+those comparisons. Two appearances merge if that average is above the threshold.
 
 Threshold: **0.45**, chosen by testing against logged similarity scores across sample videos and
 picking the value that avoided incorrect merges. `VideoProcessor.logPairwiseSimilarities()` logs
@@ -94,12 +124,14 @@ this exact score per appearance pair on every run.
 
 ### Known clustering limitation, with evidence
 
-On two test videos, a confirmed same-person pair scored 0.21–0.42 — overlapping the typical
-different-person range on the same footage. Simulating clustering across thresholds 0.30–0.60
-showed no single cutoff separates them cleanly: lower thresholds fixed the intended pair but
-wrongly merged unrelated people first (agglomerative clustering always takes the single best
+On multiple test videos, a confirmed same-person pair scored as low as 0.21–0.42 — overlapping
+the typical different-person range on the same footage. Simulating clustering across thresholds
+0.30–0.60 showed no single cutoff separates them cleanly: lower thresholds fixed the intended
+pair but wrongly merged unrelated people first (clustering always takes the single best
 available merge each round); higher thresholds avoided wrong merges but kept the duplicate. 0.45
-is the value that never produced a wrong merge on the evidence gathered.
+is the value that never produced a wrong merge on the evidence gathered. This is treated as a
+known model limitation (MobileFaceNet's embedding consistency across pose/lighting shifts on
+this footage), not a clustering-logic bug.
 
 ### Representative shot selection
 
