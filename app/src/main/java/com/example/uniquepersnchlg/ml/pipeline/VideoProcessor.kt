@@ -1,18 +1,23 @@
 package com.example.uniquepersnchlg.pipeline
 
 import android.content.Context
+import android.graphics.RectF
 import android.net.Uri
+import android.util.Log
 import com.example.facecollage.pipeline.FaceDetectorWrapper
 import com.example.facecollage.pipeline.FaceEmbedder
 import com.example.facecollage.pipeline.FrameExtractor
 import com.example.facecollage.pipeline.Tracker
 import com.example.uniquepersnchlg.data.*
 import com.example.uniquepersnchlg.util.BitmapUtils
+import com.google.mlkit.vision.face.Face
+import com.google.mlkit.vision.face.FaceLandmark
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlin.math.sqrt
 
 /**
  * Orchestrates the full pipeline for one video: extraction -> detection -> embedding ->
@@ -57,12 +62,12 @@ class VideoProcessor(private val context: Context) {
                     val faces = suppressDuplicateDetections(rawFaces)
 
                     val rawSamples = faces.mapNotNull { face ->
-                        val box = android.graphics.RectF(face.boundingBox)
+                        val box = RectF(face.boundingBox)
                         // Discard boxes that fall (mostly) outside the frame - detector edge noise.
                         if (box.width() <= 0 || box.height() <= 0) return@mapNotNull null
 
-                        val leftEyeLm = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.LEFT_EYE)
-                        val rightEyeLm = face.getLandmark(com.google.mlkit.vision.face.FaceLandmark.RIGHT_EYE)
+                        val leftEyeLm = face.getLandmark(FaceLandmark.LEFT_EYE)
+                        val rightEyeLm = face.getLandmark(FaceLandmark.RIGHT_EYE)
                         val leftEye = leftEyeLm?.position?.let { it.x to it.y }
                         val rightEye = rightEyeLm?.position?.let { it.x to it.y }
 
@@ -100,7 +105,7 @@ class VideoProcessor(private val context: Context) {
                             if (other === s) continue
                             val dx = other.boundingBox.centerX() - cx
                             val dy = other.boundingBox.centerY() - cy
-                            val d = kotlin.math.sqrt(dx * dx + dy * dy)
+                            val d = sqrt(dx * dx + dy * dy)
                             if (nearest == null || d < nearest!!) nearest = d
                         }
                         if (nearest != null) s.copy(nearestNeighborDistancePx = nearest) else s
@@ -123,19 +128,19 @@ class VideoProcessor(private val context: Context) {
                 val tracklets = rawTracklets.filter { it.bestSample().qualityScore() >= 0.30f }
                 val droppedCount = rawTracklets.size - tracklets.size
                 if (droppedCount > 0) {
-                    android.util.Log.d("VideoProcessor", "Dropped $droppedCount low-quality tracklet(s) (no frame ever reached quality 0.30).")
+                    Log.d("VideoProcessor", "Dropped $droppedCount low-quality tracklet(s) (no frame ever reached quality 0.30).")
                 }
 
                 if (tracklets.isEmpty()) {
                     _state.value = ProcessingState.Error("No clearly visible faces were found.")
                     return@withContext
                 }
-                android.util.Log.d("VideoProcessor", "Built ${tracklets.size} tracklets from ${frames.size} sampled frames.")
+                Log.d("VideoProcessor", "Built ${tracklets.size} tracklets from ${frames.size} sampled frames.")
                 logPairwiseSimilarities(tracklets)
 
                 _state.value = ProcessingState.Clustering
                 val identities = clusterer.cluster(tracklets)
-                android.util.Log.d(
+                Log.d(
                     "VideoProcessor",
                     "Clustered into ${identities.size} identities: " +
                             identities.joinToString { "id=${it.id} appearances=${it.appearanceCount}" }
@@ -162,15 +167,15 @@ class VideoProcessor(private val context: Context) {
      * broken by keeping the larger box (usually the better-centered / less clipped detection).
      */
     private fun suppressDuplicateDetections(
-        faces: List<com.google.mlkit.vision.face.Face>,
+        faces: List<Face>,
         iouThreshold: Float = 0.75f
-    ): List<com.google.mlkit.vision.face.Face> {
+    ): List<Face> {
         val sorted = faces.sortedByDescending { it.boundingBox.width().toLong() * it.boundingBox.height() }
-        val kept = mutableListOf<com.google.mlkit.vision.face.Face>()
+        val kept = mutableListOf<Face>()
         for (candidate in sorted) {
-            val candidateBox = android.graphics.RectF(candidate.boundingBox)
+            val candidateBox = RectF(candidate.boundingBox)
             val overlapsKept = kept.any { existing ->
-                val existingBox = android.graphics.RectF(existing.boundingBox)
+                val existingBox = RectF(existing.boundingBox)
                 iou(candidateBox, existingBox) > iouThreshold
             }
             if (!overlapsKept) kept.add(candidate)
@@ -178,7 +183,7 @@ class VideoProcessor(private val context: Context) {
         return kept
     }
 
-    private fun iou(a: android.graphics.RectF, b: android.graphics.RectF): Float {
+    private fun iou(a: RectF, b: RectF): Float {
         val left = maxOf(a.left, b.left)
         val top = maxOf(a.top, b.top)
         val right = minOf(a.right, b.right)
@@ -210,7 +215,7 @@ class VideoProcessor(private val context: Context) {
                 sb.append("  T${a.id}[${a.startMs}-${a.endMs}] <-> T${b.id}[${b.startMs}-${b.endMs}]: %.3f\n".format(sim))
             }
         }
-        android.util.Log.d("VideoProcessor", sb.toString())
+        Log.d("VideoProcessor", sb.toString())
     }
 
     fun reset() {

@@ -4,6 +4,7 @@ import android.graphics.*
 import com.example.uniquepersnchlg.data.Identity
 import com.example.uniquepersnchlg.util.BitmapUtils
 import kotlin.math.ceil
+import kotlin.math.max
 import kotlin.math.sqrt
 
 /**
@@ -105,7 +106,7 @@ class CollageComposer {
         // neighbor is present. Full-frame fallback is reserved for solo frames where the crop
         // came out small for an unrelated reason (e.g. face right at the image edge).
         if (shot.nearestNeighborDistancePx == null) {
-            val minAcceptableDim = kotlin.math.max(shot.boundingBox.width(), shot.boundingBox.height()) * 1.05f
+            val minAcceptableDim = max(shot.boundingBox.width(), shot.boundingBox.height()) * 1.05f
             if (portrait.width < minAcceptableDim || portrait.height < minAcceptableDim) {
                 portrait = shot.frameBitmap
             }
