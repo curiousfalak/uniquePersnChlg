@@ -9,6 +9,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -16,10 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -34,6 +37,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun ResultScreen(result: VideoResult, onProcessAnother: () -> Unit) {
     val context = LocalContext.current
+    val listState = rememberLazyListState()
 
     var revealed by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
@@ -60,12 +64,40 @@ fun ResultScreen(result: VideoResult, onProcessAnother: () -> Unit) {
         label = "headerSparkleSpin"
     )
 
+    // Scroll-linked header effect: as the list scrolls (while still on the first item, i.e. the
+    // header block), the "your squad, unlocked" title shrinks slightly and fades - a lightweight
+    // parallax feel instead of a static header that just gets pushed off-screen unchanged.
+    val headerScrollProgress by remember {
+        derivedStateOf {
+            if (listState.firstVisibleItemIndex > 0) 1f
+            else (listState.firstVisibleItemScrollOffset / 300f).coerceIn(0f, 1f)
+        }
+    }
+    val headerScale = 1f - headerScrollProgress * 0.15f
+    val headerAlpha = 1f - headerScrollProgress * 0.5f
+
     LazyColumn(
-        modifier = Modifier.fillMaxSize().padding(20.dp),
+        state = listState,
+        modifier = Modifier
+            .fillMaxSize()
+            // Respect the status bar / notch so content never sits underneath it.
+            .windowInsetsPadding(WindowInsets.statusBars)
+            .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Extra breathing room above the title on top of the safe-area inset above.
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = headerScale
+                    scaleY = headerScale
+                    alpha = headerAlpha
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0f, 0.5f)
+                }
+            ) {
                 Text("your squad, unlocked", style = MaterialTheme.typography.headlineMedium, color = InkBlack)
                 Spacer(modifier = Modifier.width(8.dp))
                 SparkleStarIcon(size = 24.dp, tint = HotPink, modifier = Modifier.rotate(headerSparkleSpin))
@@ -131,7 +163,9 @@ fun ResultScreen(result: VideoResult, onProcessAnother: () -> Unit) {
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ElectricPurple),
                 border = androidx.compose.foundation.BorderStroke(2.dp, ElectricPurple)
             ) { Text("Try another video", fontWeight = FontWeight.Bold) }
+            // Bottom safe-area padding too, so the last button isn't flush against a gesture bar.
             Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars))
         }
     }
 }
@@ -180,4 +214,3 @@ private fun StaggeredPersonCard(identity: Identity, index: Int) {
         }
     }
 }
-
