@@ -10,7 +10,7 @@ Everything runs on-device — no internet, no server.
 
 ## Demo video
 
-**[Add your Google Drive link here]** — set sharing to "Anyone with the link can view."
+**[https://drive.google.com/file/d/19AIiFd0UfjRP1cykN_4gnfV5f6j-GXlk/view?usp=sharing]** 
 
 The recording shows processing progress, per-person appearance counts, and the finished collage
 for each of the three sample videos.
