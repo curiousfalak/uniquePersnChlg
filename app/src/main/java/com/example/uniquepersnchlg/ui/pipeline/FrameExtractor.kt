@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -29,8 +30,12 @@ class FrameExtractor(private val context: Context) {
                 ?.toLongOrNull() ?: 0L
             if (durationMs <= 0L) return@withContext emptyList()
 
+
             val stepMs = (1000 / samplesPerSecond).toLong().coerceAtLeast(16L)
             val timestamps = (0 until durationMs step stepMs).toList()
+
+
+            Log.d("FrameExtractor", "video=$videoUri durationMs=$durationMs frameCount=${timestamps.size}")
 
             for ((i, tMs) in timestamps.withIndex()) {
                 // OPTION_CLOSEST is slower than OPTION_CLOSEST_SYNC but avoids landing only on
