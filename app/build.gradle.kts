@@ -62,8 +62,7 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
 
     // ML Kit face detection (on-device, bundled model)
     implementation("com.google.mlkit:face-detection:16.1.7")
@@ -75,5 +74,8 @@ dependencies {
 
     // Image loading for thumbnails
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
 }
